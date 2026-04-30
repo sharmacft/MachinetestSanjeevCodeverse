@@ -1,5 +1,6 @@
 import { PublicData, getTenantDataModel } from "../models/userModel.js";
 import { getTenantDb } from "../models/connectDb.js";
+import { getStatusCode, requireFields } from "../utils/validation.js";
 
 const getDataModelForRequest = async (req) => {
   if (req.user.role === "master_user") {
@@ -34,11 +35,12 @@ export const createData = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
+    requireFields(req.body, ["title"]);
     const DataModel = await getDataModelForRequest(req);
     const record = await DataModel.create(buildDataPayload(req));
     res.status(201).json(record);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(getStatusCode(error, 400)).json({ message: error.message });
   }
 };
 
@@ -52,7 +54,7 @@ export const getAllData = async (req, res) => {
     const records = await DataModel.find({ ownerId: req.user.id }).sort({ createdAt: -1 });
     res.status(200).json(records);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(getStatusCode(error, 400)).json({ message: error.message });
   }
 };
 
@@ -67,12 +69,13 @@ export const getDataById = async (req, res) => {
 
     res.status(200).json(record);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(getStatusCode(error, 400)).json({ message: error.message });
   }
 };
 
 export const updateData = async (req, res) => {
   try {
+    requireFields(req.body, ["title"]);
     const DataModel = await getDataModelForRequest(req);
     const record = await DataModel.findOneAndUpdate(
       { _id: req.params.id, ownerId: req.user.id },
@@ -86,7 +89,7 @@ export const updateData = async (req, res) => {
 
     res.status(200).json(record);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(getStatusCode(error, 400)).json({ message: error.message });
   }
 };
 
@@ -101,6 +104,6 @@ export const deleteData = async (req, res) => {
 
     res.status(200).json({ message: "Record deleted successfully" });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(getStatusCode(error, 400)).json({ message: error.message });
   }
 };

@@ -1,10 +1,19 @@
 import bcrypt from "bcryptjs";
 import { PublicUser } from "../models/userModel.js";
 import { signToken } from "../middlewares/jwtToken.js";
+import {
+  ensureEmail,
+  ensureMinLength,
+  getStatusCode,
+  requireFields,
+} from "../utils/validation.js";
 
 export const signupUser = async (req, res) => {
   try {
+    requireFields(req.body, ["name", "email", "password"]);
     const { name, email, password } = req.body;
+    ensureEmail(email);
+    ensureMinLength(password, 6, "password");
     const normalizedEmail = String(email).toLowerCase();
     const existingUser = await PublicUser.findOne({ email: normalizedEmail });
 
@@ -31,13 +40,16 @@ export const signupUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Error creating user:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(getStatusCode(error, 500)).json({ message: error.message || "Internal server error" });
   }
 };
 
 export const loginUser = async (req, res) => {
   try {
+    requireFields(req.body, ["email", "password"]);
     const { email, password } = req.body;
+    ensureEmail(email);
+    ensureMinLength(password, 6, "password");
     const user = await PublicUser.findOne({
       email: String(email).toLowerCase(),
       role: "public_user",
@@ -56,7 +68,7 @@ export const loginUser = async (req, res) => {
     res.status(200).json({ message: "Public user login successful", token });
   } catch (error) {
     console.error("Error logging in user:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(getStatusCode(error, 500)).json({ message: error.message || "Internal server error" });
   }
 };
 
@@ -74,6 +86,6 @@ export const getUserProfile = async (req, res) => {
     res.status(200).json(user);
   } catch (error) {
     console.error("Error fetching user profile:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(getStatusCode(error, 500)).json({ message: error.message || "Internal server error" });
   }
 };

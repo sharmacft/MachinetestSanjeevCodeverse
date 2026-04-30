@@ -3,6 +3,12 @@ import masterModel from "../models/masterModel.js";
 import { getTenantDb } from "../models/connectDb.js";
 import { getTenantUserModel } from "../models/userModel.js";
 import { signToken } from "../middlewares/jwtToken.js";
+import {
+  ensureEmail,
+  ensureMinLength,
+  getStatusCode,
+  requireFields,
+} from "../utils/validation.js";
 
 const getTenantUserContext = async (master) => {
   const tenantDb = await getTenantDb(master.dbName);
@@ -12,7 +18,10 @@ const getTenantUserContext = async (master) => {
 
 export const loginMaster = async (req, res) => {
   try {
+    requireFields(req.body, ["email", "password"]);
     const { email, password } = req.body;
+    ensureEmail(email);
+    ensureMinLength(password, 6, "password");
     const master = await masterModel.findOne({ email: String(email).toLowerCase() });
 
     if (!master) {
@@ -41,7 +50,7 @@ export const loginMaster = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(getStatusCode(error, 500)).json({ message: error.message });
   }
 };
 
@@ -51,12 +60,15 @@ export const createUser = async (req, res) => {
       return res.status(403).json({ message: "Only masters can create tenant users" });
     }
 
+    requireFields(req.body, ["name", "email", "password"]);
     const master = await masterModel.findById(req.user.id);
     if (!master) {
       return res.status(404).json({ message: "Master not found" });
     }
 
     const { name, email, password } = req.body;
+    ensureEmail(email);
+    ensureMinLength(password, 6, "password");
     const { TenantUser } = await getTenantUserContext(master);
     const normalizedEmail = String(email).toLowerCase();
     const existingUser = await TenantUser.findOne({ email: normalizedEmail });
@@ -83,7 +95,7 @@ export const createUser = async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(getStatusCode(error, 400)).json({ message: error.message });
   }
 };
 
@@ -102,13 +114,16 @@ export const getUsers = async (req, res) => {
     const users = await TenantUser.find().select("-password").sort({ createdAt: -1 });
     res.status(200).json(users);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(getStatusCode(error, 400)).json({ message: error.message });
   }
 };
 
 export const masterUserLogin = async (req, res) => {
   try {
+    requireFields(req.body, ["masterId", "email", "password"]);
     const { masterId, email, password } = req.body;
+    ensureEmail(email);
+    ensureMinLength(password, 6, "password");
     const master = await masterModel.findById(masterId);
 
     if (!master) {
@@ -139,7 +154,7 @@ export const masterUserLogin = async (req, res) => {
       token,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(getStatusCode(error, 500)).json({ message: error.message });
   }
 };
 
@@ -159,6 +174,6 @@ export const getMasterUserProfile = async (req, res) => {
 
     res.status(200).json(user);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(getStatusCode(error, 500)).json({ message: error.message });
   }
 };
